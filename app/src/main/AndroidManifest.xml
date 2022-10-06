@@ -2,6 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 내장 메모리 권한 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        tools:ignore="ManifestOrder" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -12,8 +18,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.HappyNote"
         tools:targetApi="31">
+
+        <activity android:name=".MainActivity"/>
         <activity
-            android:name=".TitleActivity" android:theme="@style/Theme.HappyNote"
+            android:name=".SplashActivity" android:theme="@style/SplashTheme"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
