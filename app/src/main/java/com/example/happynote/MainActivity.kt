@@ -13,6 +13,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.gms.tasks.OnCompleteListener
+import com.google.android.gms.tasks.OnFailureListener
+import com.google.android.gms.tasks.OnSuccessListener
 import com.google.android.gms.tasks.Task
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
@@ -38,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private val configSettings = remoteConfigSettings {
         //minimumFetchIntervalInSeconds = 3600
     }
+    private var toolbarImgList : MutableList<File?> = ArrayList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,36 +49,22 @@ class MainActivity : AppCompatActivity() {
         auth = Firebase.auth
 
         onStart()
-        signInAnonymously()
         FirebaseApp.initializeApp(this)
         getRemoteConfig()
-
     }
 
-//    // [START on_start_check_user]
-//    public override fun onStart() {
-//        super.onStart()
-//        // Check if user is signed in (non-null) and update UI accordingly.
-//        val currentUser = auth.currentUser
-//        updateUI(currentUser)
-//    }
-//    // [END on_start_check_user]
-
-        public override fun onStart() {
+            public override fun onStart() {
         super.onStart()
         // Check if user is signed in (non-null) and update UI accordingly.
         val currentUser = auth.currentUser
         if (currentUser != null) {
 //            Toast.makeText(this, "if에서 성공", Toast.LENGTH_LONG).show()
-//            signInAnonymously()
+////            signInAnonymously()
         }else {
             Toast.makeText(this, "if에서 실패", Toast.LENGTH_LONG).show()
             updateUI(currentUser)
             signInAnonymously()
         }
-
-
-
     }
 
     private fun getRemoteConfig() {
@@ -106,17 +95,16 @@ class MainActivity : AppCompatActivity() {
                 updateDialog()
                 return
             }
-//            else {
-//                val builder = AlertDialog.Builder(this).setMessage("newAppVersion > appVersion에서 에러 발생")
-//                val alertDialog : AlertDialog = builder.create()
-//                alertDialog.show()
-//            }
-
-            //2022-10-04 툴바 이미지 다운로드 메소드 정의
             checkToolbarImages()
         }catch (e : PackageManager.NameNotFoundException) {
             e.printStackTrace()
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        toolbarImgList.clear()
+        toolbarImgList = null!!
     }
 
     private fun checkToolbarImages() {
@@ -124,8 +112,6 @@ class MainActivity : AppCompatActivity() {
         if(file?.isDirectory!!) {   //isDirectory가 false이면
             file.mkdir();   //디렉토리 생성
         }
-
-        val toolbarImgList : MutableList<File> = ArrayList()
         toolbarImgList.addAll(ArrayList(Arrays.asList(*file.listFiles()!!)))    // 모든 이미지를 불러와서 툴바 이미지에 저장함
 
         if(toolbarImgList.size < toolbarImgCount) {
@@ -137,25 +123,29 @@ class MainActivity : AppCompatActivity() {
 
     private fun downloadToolbarImg(storageRef: StorageReference) {
 
-        val fileName : String = "toolbar_" + "0" + ".jpg" // toolbar_0.jpg
+        if(toolbarImgList == null || toolbarImgList.size >= toolbarImgCount) return
+
+        val fileName : String = "toolbar_" + toolbarImgList.size + ".jpg" // toolbar_0.jpg
         val fileDir : File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES + "/toolbar_images") // 파일 디렉토리 저장 경로
         val downloadFile : File = File(fileDir, fileName)// 실제로 다운로드 받을 파일 생성, 예) 탐색기에서 새로운 파일을 만드는걸로 생각하면 된다
         val downloadRef : StorageReference = storageRef
-            .child("toolbar_images/" + "toolbar_" + "0" + ".jpg")   //스토리지에 어떤 파일을 내려 받을지 설정, toolbar_images/toolbar_0.jpg
+            .child("toolbar_images/" + "toolbar_" + toolbarImgList.size + ".jpg")   //스토리지에 어떤 파일을 내려 받을지 설정, toolbar_images/toolbar_0.jpg
 
         // 스토라지 로컬 데이터 다운로드 소스
-        storageRef.getFile(downloadFile).addOnSuccessListener {
-
-           fun onSuccess(taskSnapshot : FileDownloadTask.TaskSnapshot) {
-                Log.e("onSuccess", downloadFile.path)
-        }
-
-        }.addOnFailureListener {
-
-            fun onFailure(exception : Exception) {
-
+        downloadRef.getFile(downloadFile).addOnSuccessListener (object : OnSuccessListener<FileDownloadTask.TaskSnapshot> {
+               override fun onSuccess(taskSnapshot : FileDownloadTask.TaskSnapshot) {
+                //다시 한 번 체크
+               toolbarImgList.add(downloadFile)
+               if(toolbarImgList.size < toolbarImgCount) {
+                   downloadToolbarImg(storageRef)
+               }
+               Log.e("on success", downloadFile.name)
             }
-        }
+        }).addOnFailureListener(object : OnFailureListener{
+            override fun onFailure(exception : Exception) {
+                Log.e("Fail", downloadFile.path)
+            }
+        })
     }
 
     private fun updateDialog() {
@@ -192,16 +182,9 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
-//    private fun updateUI(user: FirebaseUser?) {
-//        //No-op
-//    }
-
     private fun updateUI(user: FirebaseUser?) { //update ui code here
-        if (user != null) {
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
+        Toast.makeText(this, "updateUI 진입", Toast.LENGTH_LONG).show()
+        checkToolbarImages()
     }
 
     companion object {
